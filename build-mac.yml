@@ -45,6 +45,12 @@ jobs:
           cp dcss-src/source/crawl DCSS-Modified.app/Contents/MacOS/
           cp -r dcss-src/source/dat DCSS-Modified.app/Contents/MacOS/
           cp -r dcss-src/source/settings DCSS-Modified.app/Contents/MacOS/ 2>/dev/null || true
+          # Fonts die das Binary zur Laufzeit braucht
+          mkdir -p DCSS-Modified.app/Contents/MacOS/contrib/fonts
+          cp dcss-src/source/contrib/fonts/*.ttf DCSS-Modified.app/Contents/MacOS/contrib/fonts/
+          # Dynamische Libraries prüfen
+          echo "=== Binary dependencies ==="
+          otool -L dcss-src/source/crawl
           # Launcher-Script das ins richtige Verzeichnis wechselt
           cat > DCSS-Modified.app/Contents/MacOS/DCSS-Modified << 'LAUNCHER'
           #!/bin/bash
