@@ -26,15 +26,20 @@ jobs:
           cp player.cc dcss-src/source/player.cc
           cp player-act.cc dcss-src/source/player-act.cc
 
+      - name: Install pyyaml
+        run: |
+          echo "=== Python locations ==="
+          which python3 && python3 --version
+          ls /opt/homebrew/bin/python* 2>/dev/null || echo "no homebrew python"
+          ls /usr/bin/python* 2>/dev/null || echo "no /usr/bin python"
+          echo "=== Installing pyyaml ==="
+          PYBIN=$(which python3)
+          $PYBIN -m pip install pyyaml --break-system-packages ||           $PYBIN -m pip install pyyaml --user ||           $PYBIN -m pip install pyyaml
+          echo "=== Verify ==="
+          $PYBIN -c "import yaml; print('yaml OK for ' + '$PYBIN')"
+
       - name: Build
         run: |
-          # pyyaml in alle verfügbaren Python-Installationen
-          sudo /usr/bin/python3 -m pip install pyyaml --break-system-packages 2>/dev/null || true
-          for py in /opt/homebrew/bin/python3 /usr/local/bin/python3; do
-            [ -f "$py" ] && sudo "$py" -m pip install pyyaml --break-system-packages 2>/dev/null || true
-          done
-          echo "--- yaml check ---"
-          /usr/bin/python3 -c "import yaml; print('system python3: yaml OK')" || echo "system python3: yaml MISSING"
           cd dcss-src/source
           make -j4 TILES=y
 
