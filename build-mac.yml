@@ -26,37 +26,39 @@ jobs:
           cp player.cc dcss-src/source/player.cc
           cp player-act.cc dcss-src/source/player-act.cc
 
-      - name: Install pyyaml
-        run: |
-          echo "=== Python locations ==="
-          which python3 && python3 --version
-          ls /opt/homebrew/bin/python* 2>/dev/null || echo "no homebrew python"
-          ls /usr/bin/python* 2>/dev/null || echo "no /usr/bin python"
-          echo "=== Installing pyyaml ==="
-          PYBIN=$(which python3)
-          $PYBIN -m pip install pyyaml --break-system-packages ||           $PYBIN -m pip install pyyaml --user ||           $PYBIN -m pip install pyyaml
-          echo "=== Verify ==="
-          $PYBIN -c "import yaml; print('yaml OK for ' + '$PYBIN')"
-
       - name: Build
         run: |
+          # pyyaml installieren und Header direkt im selben Shell-Prozess generieren
+          python3 -m pip install pyyaml --break-system-packages ||           python3 -m pip install pyyaml --user ||           python3 -m pip install pyyaml
+          python3 -c "import yaml; print('yaml OK')"
           cd dcss-src/source
+          python3 util/mon-gen.py dat/mons/ util/mon-gen/ mon-data.h
+          python3 util/form-gen.py dat/forms/ util/form-gen/ transformation.h form-data.h
+          python3 util/species-gen.py dat/species/ util/species-gen/ species-data.h aptitudes.h species-groups.h species-type.h
+          python3 util/job-gen.py dat/jobs/ util/job-gen/ job-data.h job-groups.h job-type.h
           make -j4 TILES=y
 
       - name: Package as .app
         run: |
           mkdir -p DCSS-Modified.app/Contents/MacOS
-          mkdir -p DCSS-Modified.app/Contents/Resources
+          # Binary und Daten nebeneinander im MacOS-Ordner
           cp dcss-src/source/crawl DCSS-Modified.app/Contents/MacOS/
-          cp -r dcss-src/source/dat DCSS-Modified.app/Contents/Resources/
-          cp -r dcss-src/source/docs DCSS-Modified.app/Contents/Resources/
-          cp -r dcss-src/source/settings DCSS-Modified.app/Contents/Resources/ 2>/dev/null || true
+          cp -r dcss-src/source/dat DCSS-Modified.app/Contents/MacOS/
+          cp -r dcss-src/source/settings DCSS-Modified.app/Contents/MacOS/ 2>/dev/null || true
+          # Launcher-Script das ins richtige Verzeichnis wechselt
+          cat > DCSS-Modified.app/Contents/MacOS/DCSS-Modified << 'LAUNCHER'
+          #!/bin/bash
+          DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
+          cd "$DIR"
+          exec "$DIR/crawl" "$@"
+          LAUNCHER
+          chmod +x DCSS-Modified.app/Contents/MacOS/DCSS-Modified
           cat > DCSS-Modified.app/Contents/Info.plist << 'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
-            <key>CFBundleExecutable</key><string>crawl</string>
+            <key>CFBundleExecutable</key><string>DCSS-Modified</string>
             <key>CFBundleIdentifier</key><string>com.dcss.modified</string>
             <key>CFBundleName</key><string>DCSS Modified</string>
             <key>CFBundleVersion</key><string>0.34.1-mod</string>
