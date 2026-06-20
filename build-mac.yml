@@ -15,7 +15,7 @@ jobs:
       - name: Install dependencies
         run: |
           brew install pkg-config
-          pip3 install pyyaml
+          pip3 install pyyaml --break-system-packages || pip3 install pyyaml
 
       - name: Download DCSS 0.34.1 source
         run: |
