@@ -44,7 +44,7 @@ jobs:
           mkdir -p DCSS-Modified.app/Contents/Resources
           cp dcss-src/source/crawl DCSS-Modified.app/Contents/MacOS/
           cp -r dcss-src/source/dat DCSS-Modified.app/Contents/Resources/
-          cp -r dcss-src/source/docs DCSS-Modified.app/Contents/Resources/
+          cp -r dcss-src/docs DCSS-Modified.app/Contents/Resources/docs 2>/dev/null || true
           cp -r dcss-src/source/settings DCSS-Modified.app/Contents/Resources/ 2>/dev/null || true
           cat > DCSS-Modified.app/Contents/Info.plist << 'PLIST'
           <?xml version="1.0" encoding="UTF-8"?>
