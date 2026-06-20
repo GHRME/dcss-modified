@@ -12,10 +12,17 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4.2.2
 
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
       - name: Install dependencies
         run: |
           brew install pkg-config
-          pip3 install pyyaml --break-system-packages || pip3 install pyyaml
+          python3 -m pip install pyyaml
+          echo "Python: $(which python3)"
+          python3 -c "import yaml; print('yaml OK')" 
 
       - name: Download DCSS 0.34.1 source
         run: |
@@ -31,7 +38,7 @@ jobs:
       - name: Build
         run: |
           cd dcss-src/source
-          make -j4 TILES=y
+          make -j4 TILES=y PYTHON=$(which python3)
 
       - name: Package as .app
         run: |
