@@ -28,11 +28,15 @@ jobs:
 
       - name: Build
         run: |
-          python3 -m venv .venv
-          source .venv/bin/activate
-          pip install pyyaml
+          # pyyaml in alle verfügbaren Python-Installationen
+          sudo /usr/bin/python3 -m pip install pyyaml --break-system-packages 2>/dev/null || true
+          for py in /opt/homebrew/bin/python3 /usr/local/bin/python3; do
+            [ -f "$py" ] && sudo "$py" -m pip install pyyaml --break-system-packages 2>/dev/null || true
+          done
+          echo "--- yaml check ---"
+          /usr/bin/python3 -c "import yaml; print('system python3: yaml OK')" || echo "system python3: yaml MISSING"
           cd dcss-src/source
-          make -j4 TILES=y PYTHON=$(which python3)
+          make -j4 TILES=y
 
       - name: Package as .app
         run: |
