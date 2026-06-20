@@ -1,7 +1,7 @@
 name: Build DCSS macOS Tiles
 
 on:
-  workflow_dispatch:   # manuell startbar per Klick
+  workflow_dispatch:
 
 jobs:
   build:
@@ -28,8 +28,7 @@ jobs:
 
       - name: Build
         run: |
-          # pyyaml installieren und Header direkt im selben Shell-Prozess generieren
-          python3 -m pip install pyyaml --break-system-packages ||           python3 -m pip install pyyaml --user ||           python3 -m pip install pyyaml
+          python3 -m pip install pyyaml --break-system-packages || python3 -m pip install pyyaml --user || python3 -m pip install pyyaml
           python3 -c "import yaml; print('yaml OK')"
           cd dcss-src/source
           python3 util/mon-gen.py dat/mons/ util/mon-gen/ mon-data.h
@@ -41,35 +40,18 @@ jobs:
       - name: Package as .app
         run: |
           mkdir -p DCSS-Modified.app/Contents/MacOS
-          # Binary, Daten und Fonts ALLE zusammen im MacOS-Ordner
           cp dcss-src/source/crawl DCSS-Modified.app/Contents/MacOS/
           cp -r dcss-src/source/dat DCSS-Modified.app/Contents/MacOS/
           mkdir -p DCSS-Modified.app/Contents/MacOS/contrib/fonts
           cp dcss-src/source/contrib/fonts/*.ttf DCSS-Modified.app/Contents/MacOS/contrib/fonts/
           cp -r dcss-src/source/settings DCSS-Modified.app/Contents/MacOS/ 2>/dev/null || true
-          # Launcher: wechselt ins MacOS-Verzeichnis vor dem Start
-          cat > DCSS-Modified.app/Contents/MacOS/DCSS-Modified << 'LAUNCHER'
-#!/bin/bash
-DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
-cd "$DIR"
-exec "$DIR/crawl" "$@"
-LAUNCHER
+          printf '#!/bin/bash\nDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"\ncd "$DIR"\nexec "$DIR/crawl" "$@"\n' > DCSS-Modified.app/Contents/MacOS/DCSS-Modified
           chmod +x DCSS-Modified.app/Contents/MacOS/DCSS-Modified
-          cat > DCSS-Modified.app/Contents/Info.plist << 'PLIST'
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-<plist version="1.0">
-<dict>
-  <key>CFBundleExecutable</key><string>DCSS-Modified</string>
-  <key>CFBundleIdentifier</key><string>com.dcss.modified</string>
-  <key>CFBundleName</key><string>DCSS Modified</string>
-  <key>CFBundleVersion</key><string>0.34.1-mod</string>
-</dict>
-</plist>
-PLIST
+          printf '<?xml version="1.0" encoding="UTF-8"?>\n<plist version="1.0">\n<dict>\n  <key>CFBundleExecutable</key><string>DCSS-Modified</string>\n  <key>CFBundleIdentifier</key><string>com.dcss.modified</string>\n  <key>CFBundleName</key><string>DCSS Modified</string>\n  <key>CFBundleVersion</key><string>0.34.1-mod</string>\n</dict>\n</plist>\n' > DCSS-Modified.app/Contents/Info.plist
           echo "=== MacOS dir contents ==="
           ls DCSS-Modified.app/Contents/MacOS/
           zip -r DCSS-Modified.zip DCSS-Modified.app
+
       - name: Upload artifact
         uses: actions/upload-artifact@v4.6.2
         with:
