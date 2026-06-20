@@ -1,0 +1,61 @@
+name: Build DCSS macOS Tiles
+
+on:
+  workflow_dispatch:   # manuell startbar per Klick
+
+jobs:
+  build:
+    runs-on: macos-latest
+    timeout-minutes: 60
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install pkg-config
+        run: brew install pkg-config
+
+      - name: Download DCSS 0.34.1 source
+        run: |
+          curl -L https://github.com/crawl/crawl/releases/download/0.34.1/stone_soup-0.34.1.tar.xz -o dcss.tar.xz
+          tar -xf dcss.tar.xz
+          mv stone_soup-0.34.1 dcss-src
+
+      - name: Apply modified files
+        run: |
+          cp player.cc dcss-src/source/player.cc
+          cp player-act.cc dcss-src/source/player-act.cc
+
+      - name: Build
+        run: |
+          cd dcss-src/source
+          make -j4 TILES=y
+
+      - name: Package as .app
+        run: |
+          mkdir -p DCSS-Modified.app/Contents/MacOS
+          mkdir -p DCSS-Modified.app/Contents/Resources
+          cp dcss-src/source/crawl DCSS-Modified.app/Contents/MacOS/
+          cp -r dcss-src/source/dat DCSS-Modified.app/Contents/Resources/
+          cp -r dcss-src/source/docs DCSS-Modified.app/Contents/Resources/
+          cp -r dcss-src/source/settings DCSS-Modified.app/Contents/Resources/ 2>/dev/null || true
+          cat > DCSS-Modified.app/Contents/Info.plist << 'PLIST'
+          <?xml version="1.0" encoding="UTF-8"?>
+          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+          <plist version="1.0">
+          <dict>
+            <key>CFBundleExecutable</key><string>crawl</string>
+            <key>CFBundleIdentifier</key><string>com.dcss.modified</string>
+            <key>CFBundleName</key><string>DCSS Modified</string>
+            <key>CFBundleVersion</key><string>0.34.1-mod</string>
+          </dict>
+          </plist>
+          PLIST
+          zip -r DCSS-Modified.zip DCSS-Modified.app
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: DCSS-Modified-macOS
+          path: DCSS-Modified.zip
+          retention-days: 7
