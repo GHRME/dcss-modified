@@ -35,7 +35,7 @@ jobs:
           python3 util/mon-gen.py dat/mons/ util/mon-gen/ mon-data.h
           python3 util/form-gen.py dat/forms/ util/form-gen/ transformation.h form-data.h
           python3 util/species-gen.py dat/species/ util/species-gen/ species-data.h aptitudes.h species-groups.h species-type.h
-          python3 util/job-gen.py dat/jobs/ util/job-gen/ job-data.h job-groups.h
+          python3 util/job-gen.py dat/jobs/ util/job-gen/ job-data.h job-groups.h job-type.h
           make -j4 TILES=y
 
       - name: Package as .app
