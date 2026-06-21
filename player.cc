@@ -3251,6 +3251,12 @@ void level_change(bool skip_attribute_increase)
         learned_something_new(HINT_NEW_LEVEL);
     }
 
+    // Fix action_count vector sizes from old saves when level cap was 27
+    // Without this, count_action crashes at XL 28 with old save files
+    for (auto& entry : you.action_count)
+        if ((int)entry.second.size() < you.get_max_xl())
+            entry.second.resize(you.get_max_xl(), 0);
+
     while (you.experience >= exp_needed(you.max_level + 1))
     {
         ASSERT(you.experience_level == you.get_max_xl());
