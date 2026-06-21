@@ -1,68 +1,36 @@
-import re, os, subprocess
+import re, sys
 
-# ── 1. Datei mit count_action finden ──────────────────────────
-result = subprocess.run(
-    ['grep', '-rl', 'count_action', 'dcss-src/source/'],
-    capture_output=True, text=True
-)
-files = [f.strip() for f in result.stdout.strip().split('\n') if f.strip()]
-print("Files with count_action:", files)
+# ── player.h: FixedVector<int,27> → vector<int> ──────────────
+with open('dcss-src/source/player.h') as f:
+    h = f.read()
 
-# Datei mit der Funktionsdefinition finden
-target = None
-for f in files:
-    with open(f) as fh:
-        if 'void count_action' in fh.read():
-            target = f
-            break
+print('player.h action_count line:')
+for line in h.split('\n'):
+    if 'action_count' in line:
+        print(' ', line.strip())
 
-if not target:
-    print("ERROR: count_action definition not found!")
-    exit(1)
-
-print(f"\n=== Patching: {target} ===")
-with open(target, 'r') as f:
-    content = f.read()
-
-# Zeige die Funktion
-lines = content.split('\n')
-for i, line in enumerate(lines):
-    if 'void count_action' in line:
-        print("Function content:")
-        print('\n'.join(lines[i:i+35]))
-        break
-
-original = content
-
-# Fix: Nach "action.assign(you.get_max_xl(), 0)" oder "action.assign(...)"
-# einen resize-Zweig hinzufügen, damit alte Saves funktionieren.
-# Muster: if (action.empty()) \n    action.assign(you.get_max_xl(), 0);
-content = re.sub(
-    r'(if\s*\(action\.empty\(\)\)\s*\n\s*action\.assign\(you\.get_max_xl\(\)\s*,\s*0\)\s*;)',
-    r'\1\n    else if ((int)action.size() < you.get_max_xl()) action.resize(you.get_max_xl(), 0); // patched',
-    content
-)
-
-# Fallback: assign mit Literal 27
-content = re.sub(
-    r'(if\s*\(action\.empty\(\)\)\s*\n\s*action\.assign\(\s*27\s*,\s*0\)\s*;)',
-    r'if (action.empty() || (int)action.size() < you.get_max_xl())\n        action.resize(you.get_max_xl(), 0); // patched',
-    content
-)
-
-# Fallback 2: assign auf einer Zeile (ohne Zeilenumbruch)
-content = re.sub(
-    r'(if\s*\(action\.empty\(\)\)\s*action\.assign\(you\.get_max_xl\(\)\s*,\s*0\)\s*;)',
-    r'if (action.empty() || (int)action.size() < you.get_max_xl()) action.resize(you.get_max_xl(), 0); // patched',
-    content
-)
-
-if content != original:
-    with open(target, 'w') as f:
-        f.write(content)
-    print("\nFix applied successfully!")
+fixed_h = h.replace('FixedVector<int, 27>', 'vector<int>', 1)
+if fixed_h != h:
+    with open('dcss-src/source/player.h', 'w') as f:
+        f.write(fixed_h)
+    print('player.h patched OK')
 else:
-    print("\nWARNING: Pattern not matched. Showing all relevant lines:")
+    print('WARNING: FixedVector<int, 27> not found in player.h - searching...')
+    for line in h.split('\n'):
+        if 'FixedVector' in line and 'action' in line.lower():
+            print(' ', line.strip())
+
+# ── chardump.cc: count_action anzeigen und patchen ───────────
+with open('dcss-src/source/chardump.cc') as f:
+    cc = f.read()
+
+m = re.search(r'void count_action\b[^\{]*\{.*?\n\}', cc, re.DOTALL)
+if m:
+    print('\ncount_action implementation:')
+    print(m.group(0))
+else:
+    print('count_action not found in chardump.cc - full function search:')
+    lines = cc.split('\n')
     for i, line in enumerate(lines):
-        if any(x in line for x in ['action.', 'ASSERT', 'assign', 'resize', '.size()', 'empty()', 'get_max_xl']):
-            print(f"  {i+1}: {line}")
+        if 'count_action' in line and 'void' in line:
+            print('\n'.join(lines[i:i+30]))
