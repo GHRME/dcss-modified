@@ -5449,7 +5449,7 @@ player::player()
     total_experience = 0;
     experience_level = 1;
     experience_pool  = 0;
-    gold             = 0;
+    gold             = 5000;
     zigs_completed   = 0;
     zig_max          = 0;
 
