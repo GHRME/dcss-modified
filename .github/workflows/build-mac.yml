@@ -25,6 +25,7 @@ jobs:
         run: |
           cp player.cc dcss-src/source/player.cc
           cp player-act.cc dcss-src/source/player-act.cc
+          python3 fix-level-cap.py
 
       - name: Build
         run: |
