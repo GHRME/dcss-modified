@@ -2,84 +2,67 @@ import re, os, subprocess
 
 # ── 1. Datei mit count_action finden ──────────────────────────
 result = subprocess.run(
-    ['grep', '-rl', 'void count_action', 'dcss-src/source/'],
+    ['grep', '-rl', 'count_action', 'dcss-src/source/'],
     capture_output=True, text=True
 )
-files = result.stdout.strip().split('\n')
+files = [f.strip() for f in result.stdout.strip().split('\n') if f.strip()]
 print("Files with count_action:", files)
 
+# Datei mit der Funktionsdefinition finden
 target = None
 for f in files:
-    if f.strip():
-        target = f.strip()
-        break
+    with open(f) as fh:
+        if 'void count_action' in fh.read():
+            target = f
+            break
 
 if not target:
-    print("ERROR: count_action not found in any source file!")
+    print("ERROR: count_action definition not found!")
     exit(1)
 
-print(f"\n=== count_action in: {target} ===")
+print(f"\n=== Patching: {target} ===")
 with open(target, 'r') as f:
     content = f.read()
 
-# Funktion extrahieren und anzeigen
-match = re.search(r'void count_action\b[^{]*\{(.+?)(?=\n\w)', content, re.DOTALL)
-if match:
-    func_text = match.group(0)[:1500]
-    print(func_text)
-else:
-    # Zeige einfach 40 Zeilen ab count_action
-    lines = content.split('\n')
-    for i, line in enumerate(lines):
-        if 'void count_action' in line:
-            print('\n'.join(lines[i:i+40]))
-            break
+# Zeige die Funktion
+lines = content.split('\n')
+for i, line in enumerate(lines):
+    if 'void count_action' in line:
+        print("Function content:")
+        print('\n'.join(lines[i:i+35]))
+        break
 
-# ── 2. Fix anwenden ───────────────────────────────────────────
 original = content
 
-# Fix A: ASSERT/ASSERTM über action.size() vs get_max_xl()
+# Fix: Nach "action.assign(you.get_max_xl(), 0)" oder "action.assign(...)"
+# einen resize-Zweig hinzufügen, damit alte Saves funktionieren.
+# Muster: if (action.empty()) \n    action.assign(you.get_max_xl(), 0);
 content = re.sub(
-    r'ASSERTM?\s*\([^;]*\.size\s*\(\)[^;]*get_max_xl[^;]*\)\s*;',
-    'if ((int)action.size() < you.get_max_xl()) action.resize(you.get_max_xl(), 0); // patched',
+    r'(if\s*\(action\.empty\(\)\)\s*\n\s*action\.assign\(you\.get_max_xl\(\)\s*,\s*0\)\s*;)',
+    r'\1\n    else if ((int)action.size() < you.get_max_xl()) action.resize(you.get_max_xl(), 0); // patched',
     content
 )
 
-# Fix B: assign(27, 0) → assign(you.get_max_xl(), 0)
+# Fallback: assign mit Literal 27
 content = re.sub(
-    r'\.assign\s*\(\s*27\s*,',
-    '.assign(you.get_max_xl(),',
+    r'(if\s*\(action\.empty\(\)\)\s*\n\s*action\.assign\(\s*27\s*,\s*0\)\s*;)',
+    r'if (action.empty() || (int)action.size() < you.get_max_xl())\n        action.resize(you.get_max_xl(), 0); // patched',
     content
 )
 
-# Fix C: assign(MAX_XP_LEVEL, ...) → assign(you.get_max_xl(), ...)
+# Fallback 2: assign auf einer Zeile (ohne Zeilenumbruch)
 content = re.sub(
-    r'\.assign\s*\(\s*MAX_XP_LEVEL\s*,',
-    '.assign(you.get_max_xl(),',
-    content
-)
-
-# Fix D: Prüfe ob XL-Index (arg < 27) oder ähnlich
-content = re.sub(
-    r'ASSERTM?\s*\([^;]*arg\s*<\s*27\s*[^;]*\)\s*;',
-    'ASSERT(arg >= 0 && arg < 99); // patched level cap',
-    content
-)
-
-# Fix E: xl < 27 Assertion
-content = re.sub(
-    r'ASSERTM?\s*\([^;]*xl\s*<\s*27\s*[^;]*\)\s*;',
-    'ASSERT(xl >= 0 && xl < 99); // patched level cap',
+    r'(if\s*\(action\.empty\(\)\)\s*action\.assign\(you\.get_max_xl\(\)\s*,\s*0\)\s*;)',
+    r'if (action.empty() || (int)action.size() < you.get_max_xl()) action.resize(you.get_max_xl(), 0); // patched',
     content
 )
 
 if content != original:
     with open(target, 'w') as f:
         f.write(content)
-    print("\nFix applied!")
+    print("\nFix applied successfully!")
 else:
-    print("\nWARNING: No known pattern matched. Showing all action-related lines:")
-    for i, line in enumerate(content.split('\n')):
-        stripped = line.strip().lower()
-        if 'action' in stripped and any(x in stripped for x in ['size', 'assign', 'assert', 'resize', '27', 'max_xl']):
-            print(f"  Line {i+1}: {line.strip()}")
+    print("\nWARNING: Pattern not matched. Showing all relevant lines:")
+    for i, line in enumerate(lines):
+        if any(x in line for x in ['action.', 'ASSERT', 'assign', 'resize', '.size()', 'empty()', 'get_max_xl']):
+            print(f"  {i+1}: {line}")
