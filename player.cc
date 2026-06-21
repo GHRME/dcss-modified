@@ -3733,10 +3733,15 @@ unsigned int exp_needed(int lev, int exp_apt)
             lev -= 4;
             level = 10 + 10 * lev + (60 << lev);
         }
-        else
+        else if (lev <= 13)
         {
             lev -= 12;
             level = 16675 + 5985 * lev + 4235 * lev * lev;
+        }
+        else
+        {
+            // Flat curve from level 14+: constant 20000 XP per level
+            level = 26895 + (lev - 13) * 20000;
         }
         break;
     }
